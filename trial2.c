@@ -16,6 +16,8 @@ struct Transaction {
 // Function declarations
 void addTransaction();
 void readTransactions();
+void readTransactionsByMonthYear();
+void showExpensePercentages();
 void getCategoryFullName(char code, char fullName[]);
 void getAccountFullName(char code, char fullName[]);
 
@@ -26,7 +28,9 @@ int main() {
         printf("\nTransaction Management System\n");
         printf("1. Add a new transaction\n");
         printf("2. View all transactions\n");
-        printf("3. Exit\n");
+        printf("3. View transactions for a specific month/year\n");
+        printf("4. Show expense percentage by category\n");
+        printf("5. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
         getchar();
@@ -39,6 +43,12 @@ int main() {
                 readTransactions();
                 break;
             case 3:
+                readTransactionsByMonthYear();
+                break;
+            case 4:
+                showExpensePercentages();
+                break;
+            case 5:
                 printf("Exiting the program.\n");
                 return 0;
             default:
@@ -167,10 +177,104 @@ void readTransactions() {
         count++;
     }
 
-
     if (count == 0) {
         printf("No transactions found.\n");
     }
 
     fclose(filePtr);
+}
+
+void readTransactionsByMonthYear() {
+    FILE *filePtr;
+    struct Transaction t;
+    int month, year;
+    char categoryFullName[20];
+    char accountFullName[12];
+    int count = 0;
+
+    printf("Enter the month (MM): ");
+    scanf("%d", &month);
+    printf("Enter the year (YYYY): ");
+    scanf("%d", &year);
+
+    filePtr = fopen("transactions2.bin", "rb");
+    if (filePtr == NULL) {
+        printf("Error opening file or no transactions found.\n");
+        return;
+    }
+
+    printf("\nTransactions for %02d/%04d:\n", month, year);
+    printf("Date         Amount   Category       Account      Note                            \n");
+    printf("-------------------------------------------------------------------------------------------\n");
+
+    while (fread(&t, sizeof(struct Transaction), 1, filePtr)) {
+        if (t.month == month && t.year == year) {
+            getCategoryFullName(t.categoryCode, categoryFullName);
+            getAccountFullName(t.accountCode, accountFullName);
+            printf("%02d/%02d/%04d  %-7.2f  %-12s  %-10s  %-30s\n", 
+                   t.day, t.month, t.year, t.amount, categoryFullName, accountFullName, t.note);
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        printf("No transactions found for %02d/%04d.\n", month, year);
+    }
+
+    fclose(filePtr);
+}
+
+void showExpensePercentages() {
+    FILE *filePtr;
+    struct Transaction t;
+    float totalAmount = 0;
+    float categoryTotals[12] = {0}; // Array to store the total for each category
+    int count = 0;
+
+    filePtr = fopen("transactions2.bin", "rb");
+    if (filePtr == NULL) {
+        printf("Error opening file or no transactions found.\n");
+        return;
+    }
+
+    // First pass: Calculate total and category-wise expenses
+    while (fread(&t, sizeof(struct Transaction), 1, filePtr)) {
+        totalAmount += t.amount;
+
+        switch (t.categoryCode) {
+            case 'F': categoryTotals[0] += t.amount; break;
+            case 'S': categoryTotals[1] += t.amount; break;
+            case 'P': categoryTotals[2] += t.amount; break;
+            case 'T': categoryTotals[3] += t.amount; break;
+            case 'C': categoryTotals[4] += t.amount; break;
+            case 'H': categoryTotals[5] += t.amount; break;
+            case 'A': categoryTotals[6] += t.amount; break;
+            case 'B': categoryTotals[7] += t.amount; break;
+            case 'L': categoryTotals[8] += t.amount; break;
+            case 'E': categoryTotals[9] += t.amount; break;
+            case 'G': categoryTotals[10] += t.amount; break;
+            case 'O': categoryTotals[11] += t.amount; break;
+        }
+        count++;
+    }
+
+    fclose(filePtr);
+
+    if (totalAmount == 0) {
+        printf("No transactions to calculate percentages.\n");
+        return;
+    }
+
+    // Second pass: Display the percentage for each category
+    printf("\nExpense Breakdown by Category:\n");
+    printf("---------------------------------\n");
+
+    char categoryNames[12][15] = {"Food", "Social life", "Pets", "Transport", "Culture", "Household",
+                                  "Apparel", "Beauty", "Health", "Education", "Gift", "Other"};
+    
+    for (int i = 0; i < 12; i++) {
+        if (categoryTotals[i] > 0) {
+            printf("%-12s: %.2f%%\n", categoryNames[i], (categoryTotals[i] / totalAmount) * 100);
+        }
+    }
 }
