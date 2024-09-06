@@ -13,11 +13,19 @@ struct Transaction {
     char note[100];        
 };
 
+// Structure for user credentials
+struct User {
+    char username[50];
+    char password[50];
+};
+
 // Function declarations
-void addTransaction();
-void readTransactions();
-void readTransactionsByMonthYear();
-void showExpensePercentages();
+void signup();
+void login();
+void addTransaction(char *filename);
+void readTransactions(char *filename);
+void readTransactionsByMonthYear(char *filename);
+void showExpensePercentages(char *filename);
 void getCategoryFullName(char code, char fullName[]);
 void getAccountFullName(char code, char fullName[]);
 
@@ -26,29 +34,21 @@ int main() {
 
     while (1) {
         printf("\nTransaction Management System\n");
-        printf("1. Add a new transaction\n");
-        printf("2. View all transactions\n");
-        printf("3. View transactions for a specific month/year\n");
-        printf("4. Show expense percentage by category\n");
-        printf("5. Exit\n");
+        printf("1. Signup\n");
+        printf("2. Login\n");
+        printf("3. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
         getchar();
 
         switch (choice) {
             case 1:
-                addTransaction();
+                signup();
                 break;
             case 2:
-                readTransactions();
+                login();
                 break;
             case 3:
-                readTransactionsByMonthYear();
-                break;
-            case 4:
-                showExpensePercentages();
-                break;
-            case 5:
                 printf("Exiting the program.\n");
                 return 0;
             default:
@@ -59,13 +59,120 @@ int main() {
     return 0;
 }
 
-// Function implementations
+// Function to sign up a new user
+void signup() {
+    FILE *filePtr;
+    struct User newUser;
+    char fileName[60];
 
-void addTransaction() {
+    printf("Enter a username: ");
+    fgets(newUser.username, 50, stdin);
+    newUser.username[strcspn(newUser.username, "\n")] = 0;  // Remove trailing newline
+
+    printf("Enter a password: ");
+    fgets(newUser.password, 50, stdin);
+    newUser.password[strcspn(newUser.password, "\n")] = 0;  // Remove trailing newline
+
+    filePtr = fopen("users.bin", "ab");
+    if (filePtr == NULL) {
+        printf("Error opening users file!\n");
+        return;
+    }
+
+    fwrite(&newUser, sizeof(struct User), 1, filePtr);
+    fclose(filePtr);
+
+    // Create a new file for the user
+    sprintf(fileName, "%s_transactions.bin", newUser.username);
+    filePtr = fopen(fileName, "wb");
+    if (filePtr == NULL) {
+        printf("Error creating user file!\n");
+        return;
+    }
+    fclose(filePtr);
+
+    printf("Signup successful! You can now login.\n");
+}
+
+// Function to log in an existing user
+void login() {
+    FILE *filePtr;
+    struct User currentUser;
+    char username[50], password[50], fileName[60];
+    int found = 0;
+
+    printf("Enter your username: ");
+    fgets(username, 50, stdin);
+    username[strcspn(username, "\n")] = 0;  // Remove trailing newline
+
+    printf("Enter your password: ");
+    fgets(password, 50, stdin);
+    password[strcspn(password, "\n")] = 0;  // Remove trailing newline
+
+    filePtr = fopen("users.bin", "rb");
+    if (filePtr == NULL) {
+        printf("Error opening users file!\n");
+        return;
+    }
+
+    while (fread(&currentUser, sizeof(struct User), 1, filePtr)) {
+        if (strcmp(currentUser.username, username) == 0 && strcmp(currentUser.password, password) == 0) {
+            found = 1;
+            break;
+        }
+    }
+
+    fclose(filePtr);
+
+    if (!found) {
+        printf("Invalid username or password!\n");
+        return;
+    }
+
+    // Use the logged-in user's transaction file
+    sprintf(fileName, "%s_transactions.bin", username);
+
+    // Logged in successfully, display user menu
+    int choice;
+    while (1) {
+        printf("\nWelcome, %s\n", username);
+        printf("1. Add a new transaction\n");
+        printf("2. View all transactions\n");
+        printf("3. View transactions for a specific month/year\n");
+        printf("4. Show expense percentage by category\n");
+        printf("5. Logout\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        getchar();
+
+        switch (choice) {
+            case 1:
+                addTransaction(fileName);
+                break;
+            case 2:
+                readTransactions(fileName);
+                break;
+            case 3:
+                readTransactionsByMonthYear(fileName);
+                break;
+            case 4:
+                showExpensePercentages(fileName);
+                break;
+            case 5:
+                printf("Logging out.\n");
+                return;
+            default:
+                printf("Invalid choice. Please try again.\n");
+        }
+    }
+}
+
+// Function to add a transaction
+void addTransaction(char *filename) {
     FILE *filePtr;
     struct Transaction t;
 
-    filePtr = fopen("transactions2.bin", "ab");
+    filePtr = fopen(filename, "ab");
     if (filePtr == NULL) {
         printf("Error opening file!\n");
         return;
@@ -114,8 +221,8 @@ void addTransaction() {
     printf("Transaction added successfully.\n");
 }
 
+// Function to get the category full name
 void getCategoryFullName(char code, char fullName[]) {
-    // Convert category code to full name
     switch (code) {
         case 'F':
             strcpy(fullName, "Food");
@@ -159,8 +266,8 @@ void getCategoryFullName(char code, char fullName[]) {
     }
 }
 
+// Function to get the account full name
 void getAccountFullName(char code, char fullName[]) {
-    // Convert account code to full name
     if (code == 'C') {
         strcpy(fullName, "Cash");
     } else if (code == 'O') {
@@ -170,14 +277,15 @@ void getAccountFullName(char code, char fullName[]) {
     }
 }
 
-void readTransactions() {
+// Function to read all transactions
+void readTransactions(char *filename) {
     FILE *filePtr;
     struct Transaction t;
     char categoryFullName[20];
     char accountFullName[12];
     int count = 0;
 
-    filePtr = fopen("transactions2.bin", "rb");
+    filePtr = fopen(filename, "rb");
     if (filePtr == NULL) {
         printf("Error opening file or no transactions found.\n");
         return;
@@ -202,7 +310,8 @@ void readTransactions() {
     fclose(filePtr);
 }
 
-void readTransactionsByMonthYear() {
+// Function to read transactions by month/year
+void readTransactionsByMonthYear(char *filename) {
     FILE *filePtr;
     struct Transaction t;
     int month, year;
@@ -215,7 +324,7 @@ void readTransactionsByMonthYear() {
     printf("Enter the year (YYYY): ");
     scanf("%d", &year);
 
-    filePtr = fopen("transactions2.bin", "rb");
+    filePtr = fopen(filename, "rb");
     if (filePtr == NULL) {
         printf("Error opening file or no transactions found.\n");
         return;
@@ -236,29 +345,27 @@ void readTransactionsByMonthYear() {
     }
 
     if (count == 0) {
-        printf("No transactions found for %02d/%04d.\n", month, year);
+        printf("No transactions found for the given month and year.\n");
     }
 
     fclose(filePtr);
 }
 
-void showExpensePercentages() {
+// Function to show expense percentages by category
+void showExpensePercentages(char *filename) {
     FILE *filePtr;
     struct Transaction t;
-    float totalAmount = 0;
-    float categoryTotals[12] = {0}; // Array to store the total for each category
-    int count = 0;
+    float total = 0.0, categoryTotals[11] = {0}; 
+    char categoryFullName[20];
 
-    filePtr = fopen("transactions2.bin", "rb");
+    filePtr = fopen(filename, "rb");
     if (filePtr == NULL) {
         printf("Error opening file or no transactions found.\n");
         return;
     }
 
-    // First pass: Calculate total and category-wise expenses
     while (fread(&t, sizeof(struct Transaction), 1, filePtr)) {
-        totalAmount += t.amount;
-
+        total += t.amount;
         switch (t.categoryCode) {
             case 'F': categoryTotals[0] += t.amount; break;
             case 'S': categoryTotals[1] += t.amount; break;
@@ -271,28 +378,19 @@ void showExpensePercentages() {
             case 'L': categoryTotals[8] += t.amount; break;
             case 'E': categoryTotals[9] += t.amount; break;
             case 'G': categoryTotals[10] += t.amount; break;
-            case 'O': categoryTotals[11] += t.amount; break;
         }
-        count++;
+    }
+
+    if (total == 0) {
+        printf("No transactions to calculate percentages.\n");
+    } else {
+        printf("\nExpense Percentages by Category:\n");
+        printf("------------------------------------\n");
+        for (int i = 0; i < 11; i++) {
+            getCategoryFullName("FSPTCHABLEG"[i], categoryFullName);
+            printf("%-12s: %.2f%%\n", categoryFullName, (categoryTotals[i] / total) * 100);
+        }
     }
 
     fclose(filePtr);
-
-    if (totalAmount == 0) {
-        printf("No transactions to calculate percentages.\n");
-        return;
-    }
-
-    // Second pass: Display the percentage for each category
-    printf("\nExpense Breakdown by Category:\n");
-    printf("---------------------------------\n");
-
-    char categoryNames[12][15] = {"Food", "Social life", "Pets", "Transport", "Culture", "Household",
-                                  "Apparel", "Beauty", "Health", "Education", "Gift", "Other"};
-    
-    for (int i = 0; i < 12; i++) {
-        if (categoryTotals[i] > 0) {
-            printf("%-12s: %.2f%%\n", categoryNames[i], (categoryTotals[i] / totalAmount) * 100);
-        }
-    }
 }
