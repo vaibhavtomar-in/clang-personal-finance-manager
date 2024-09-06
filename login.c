@@ -203,13 +203,23 @@ void addTransaction(char *filename) {
     scanf("%f", &t.amount);
     getchar();
 
+    reEnterCategory:
     printf("Category Codes\nF for food\nS for social life\nP for pets\nT for transport\nC for culture\nH for household\nA for apparel\nB for beauty\nL for health\nE for education\nG for gift\nO for others\nTransaction category code : ");
     scanf("%c", &t.categoryCode);
     getchar();
-
+    if(!(t.categoryCode == 'F' || t.categoryCode == 'S' || t.categoryCode == 'P' || t.categoryCode == 'T' || t.categoryCode == 'C' || t.categoryCode == 'H' || t.categoryCode == 'A' || t.categoryCode == 'B' || t.categoryCode == 'L' || t.categoryCode == 'E' || t.categoryCode == 'G' || t.categoryCode == 'O')){
+        printf("Invalid category code. Please try again.\n");
+        goto reEnterCategory;
+    }
+    
+    reEnterAccount:
     printf("Enter Account Code (C for Cash, O for UPI & Card): ");
     scanf("%c", &t.accountCode);
     getchar();
+    if(!(t.accountCode == 'C' || t.accountCode == 'O')){
+        printf("Invalid account code. Please try again.\n");
+        goto reEnterAccount;
+    }
 
     printf("Enter Note: ");
     gets(t.note);
