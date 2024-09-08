@@ -18,6 +18,7 @@ void addTransaction();
 void readTransactions();
 void readTransactionsByMonthYear();
 void showExpensePercentages();
+void showExpensePercentagePerWeek();
 void getCategoryFullName(char code, char fullName[]);
 void getAccountFullName(char code, char fullName[]);
 
@@ -30,7 +31,8 @@ int main() {
         printf("2. View all transactions\n");
         printf("3. View transactions for a specific month/year\n");
         printf("4. Show expense percentage by category\n");
-        printf("5. Exit\n");
+        printf("5. Show expense percentage per week for a specific month/year\n");
+        printf("6. Exit\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
         getchar();
@@ -49,6 +51,9 @@ int main() {
                 showExpensePercentages();
                 break;
             case 5:
+                showExpensePercentagePerWeek();
+                break;
+            case 6:
                 printf("Exiting the program.\n");
                 return 0;
             default:
@@ -293,6 +298,50 @@ void showExpensePercentages() {
     for (int i = 0; i < 12; i++) {
         if (categoryTotals[i] > 0) {
             printf("%-12s: %.2f%%\n", categoryNames[i], (categoryTotals[i] / totalAmount) * 100);
+        }
+    }
+}
+
+void showExpensePercentagePerWeek() {
+    FILE *filePtr;
+    struct Transaction t;
+    int month, year;
+    float weekTotals[5] = {0}; 
+    float totalAmount = 0;      
+
+    printf("Enter the month (MM): ");
+    scanf("%d", &month);
+    printf("Enter the year (YYYY): ");
+    scanf("%d", &year);
+
+    filePtr = fopen("transactions2.bin", "rb");
+    if (filePtr == NULL) {
+        printf("Error opening file or no transactions found.\n");
+        return;
+    }
+
+    // Iterate through the transactions and calculate weekly totals and total amount for the month
+    while (fread(&t, sizeof(struct Transaction), 1, filePtr)) {
+        if (t.month == month && t.year == year) {
+            int week = (t.day - 1) / 7;  
+            weekTotals[week] += t.amount;
+            totalAmount += t.amount;     
+        }
+    }
+
+    fclose(filePtr);
+
+    // Display the expense percentage per week
+    printf("\nExpense percentage per week for %02d/%04d:\n", month, year);
+    if (totalAmount == 0) {
+        printf("No transactions found for the given month and year.\n");
+        return;
+    }
+
+    for (int i = 0; i < 5; i++) {
+        if (weekTotals[i] > 0) {
+            float percentage = (weekTotals[i] / totalAmount) * 100;
+            printf("Week %d: %.2f%%\n", i + 1, percentage);
         }
     }
 }
