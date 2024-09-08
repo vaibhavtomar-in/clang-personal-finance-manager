@@ -26,6 +26,7 @@ void addTransaction(char *filename);
 void readTransactions(char *filename);
 void readTransactionsByMonthYear(char *filename);
 void showExpensePercentages(char *filename);
+void showMonthlyExpensePercentages(char *filename);
 void showExpensePercentagePerWeek(char *filename);
 void getCategoryFullName(char code, char fullName[]);
 void getAccountFullName(char code, char fullName[]);
@@ -67,12 +68,11 @@ void signup() {
     char fileName[60];
 
     printf("Enter a username: ");
-    fgets(newUser.username, 50, stdin);
-    newUser.username[strcspn(newUser.username, "\n")] = 0;  // Remove trailing newline
+    getchar();  // Clear the buffer
+    gets(newUser.username);  // Use gets() to input the username
 
     printf("Enter a password: ");
-    fgets(newUser.password, 50, stdin);
-    newUser.password[strcspn(newUser.password, "\n")] = 0;  // Remove trailing newline
+    gets(newUser.password);  // Use gets() to input the password
 
     filePtr = fopen("users.bin", "ab");
     if (filePtr == NULL) {
@@ -103,13 +103,10 @@ void login() {
     int found = 0;
 
     printf("Enter your username: ");
-    fgets(username, 50, stdin);
-    username[strcspn(username, "\n")] = 0;  // Remove trailing newline
+    gets(username);
 
     printf("Enter your password: ");
-    fgets(password, 50, stdin);
-    password[strcspn(password, "\n")] = 0;  // Remove trailing newline
-
+    gets(password); 
     filePtr = fopen("users.bin", "rb");
     if (filePtr == NULL) {
         printf("Error opening users file!\n");
@@ -142,7 +139,8 @@ void login() {
         printf("3. View transactions for a specific month/year\n");
         printf("4. Show expense percentage by category\n");
         printf("5. Show expense percentage per week for a specific month\n");
-        printf("6. Logout\n");
+        printf("6. Show expense percentage by category for a specific month\n");
+        printf("7. Logout\n");
         printf("Enter your choice: ");
         scanf("%d", &choice);
         getchar();
@@ -164,6 +162,9 @@ void login() {
                 showExpensePercentagePerWeek(fileName);
                 break;
             case 6:
+                showMonthlyExpensePercentages(fileName);
+                break;
+            case 7:
                 printf("Logging out.\n");
                 return;
             default:
@@ -427,12 +428,10 @@ void showExpensePercentagePerWeek(char *filename) {
         printf("Error opening file or no transactions found.\n");
         return;
     }
-
-    // Iterate through the transactions and calculate weekly totals and total amount for the month
     while (fread(&t, sizeof(struct Transaction), 1, filePtr)) {
         if (t.month == month && t.year == year) {
-            int week = (t.day - 1) / 7;  // This calculates which week the transaction belongs to
-            if (week < 5) {  // Ensure week is within the 5 weeks limit
+            int week = (t.day - 1) / 7; 
+            if (week < 5) {  
                 weekTotals[week] += t.amount;
             }
             totalAmount += t.amount;     
@@ -453,6 +452,61 @@ void showExpensePercentagePerWeek(char *filename) {
         if (weekTotals[i] > 0) {
             float percentage = (weekTotals[i] / totalAmount) * 100;
             printf("Week %d: %.2f%% , Amount : %.2f\n", i + 1, percentage, weekTotals[i]);
+        }
+    }
+}
+void showMonthlyExpensePercentages(char *filename) {
+    FILE *filePtr;
+    struct Transaction t;
+    float totalAmount = 0.0, categoryTotals[11] = {0}; 
+    char categoryFullName[20];
+    int month, year;
+    int categoriesUsed[11] = {0}; 
+    printf("Enter the month (MM): ");
+    scanf("%d", &month);
+    printf("Enter the year (YYYY): ");
+    scanf("%d", &year);
+
+    filePtr = fopen(filename, "rb");
+    if (filePtr == NULL) {
+        printf("Error opening file or no transactions found.\n");
+        return;
+    }
+
+    while (fread(&t, sizeof(struct Transaction), 1, filePtr)) {
+        if (t.month == month && t.year == year) {
+            totalAmount += t.amount;
+            switch (t.categoryCode) {
+                case 'F': categoryTotals[0] += t.amount; categoriesUsed[0] = 1; break;
+                case 'S': categoryTotals[1] += t.amount; categoriesUsed[1] = 1; break;
+                case 'P': categoryTotals[2] += t.amount; categoriesUsed[2] = 1; break;
+                case 'T': categoryTotals[3] += t.amount; categoriesUsed[3] = 1; break;
+                case 'C': categoryTotals[4] += t.amount; categoriesUsed[4] = 1; break;
+                case 'H': categoryTotals[5] += t.amount; categoriesUsed[5] = 1; break;
+                case 'A': categoryTotals[6] += t.amount; categoriesUsed[6] = 1; break;
+                case 'B': categoryTotals[7] += t.amount; categoriesUsed[7] = 1; break;
+                case 'L': categoryTotals[8] += t.amount; categoriesUsed[8] = 1; break;
+                case 'E': categoryTotals[9] += t.amount; categoriesUsed[9] = 1; break;
+                case 'G': categoryTotals[10] += t.amount; categoriesUsed[10] = 1; break;
+            }
+        }
+    }
+
+    fclose(filePtr);
+
+    if (totalAmount == 0) {
+        printf("No transactions found for the given month and year.\n");
+        return;
+    }
+
+    printf("\nTotal expenses for %02d/%04d: %.2f\n", month, year, totalAmount);
+
+    printf("\nCategory Breakdown:\n");
+    printf("------------------------------------\n");
+    for (int i = 0; i < 11; i++) {
+        if (categoriesUsed[i]) {
+            getCategoryFullName("FSPTCHABLEG"[i], categoryFullName);
+            printf("%-12s: %.2f%%, Amount %.2f\n", categoryFullName, (categoryTotals[i] / totalAmount) * 100, categoryTotals[i]);
         }
     }
 }
