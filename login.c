@@ -68,7 +68,6 @@ void signup() {
     char fileName[60];
 
     printf("Enter a username: ");
-    getchar();  // Clear the buffer
     gets(newUser.username);  // Use gets() to input the username
 
     printf("Enter a password: ");
